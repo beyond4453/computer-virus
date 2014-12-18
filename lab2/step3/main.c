@@ -2,14 +2,10 @@
 
 #pragma comment(lib, "user32.lib")
 
-//char *s = "I'm hacked";
-//char *s1  = "user32.dll";
-//char *s2  = "MessageBoxA";
-
 int main()
 {
 	__asm{
-//push s1 
+//push "user32.dll" to the stack 
 		sub esp, 0x40
 		mov  [ebp-0x40], 'u'
 		mov  [ebp-0x3f], 's'
@@ -24,11 +20,11 @@ int main()
 		mov  [ebp-0x36], 0x0
 		lea ebx, [ebp-0x40]
 		push ebx
-
+//call LoadLibraryA , result-->eax
 		mov  eax, dword ptr [LoadLibraryA]
 		call eax
 
-
+//push "MessageBoxA" to the stack
 		mov  [ebp-0x30], 'M'
 		mov  [ebp-0x2f], 'e'
 		mov  [ebp-0x2e], 's'
@@ -44,12 +40,13 @@ int main()
 		lea ebx, [ebp-0x30]
 		push ebx
 
-//push s2
+//push LoadLibraryA 's result
 		push eax
+// call GetProcAddress , result --> eax
 		mov eax, dword ptr[GetProcAddress]
 		call eax
-//		push 0
-//push s
+
+//push "I'm hacked" to the stack
 		mov  [ebp-0x20], 'I'
 		mov  [ebp-0x1f], '\''
 		mov  [ebp-0x1e], 'm'
@@ -67,6 +64,7 @@ int main()
 		push ebx
 		push ebx
 		push 0
+//call MessageBoxA
 		call eax
 
 		add esp, 0x40
