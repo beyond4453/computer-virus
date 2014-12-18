@@ -21,7 +21,8 @@ int main()
 		lea ebx, [ebp-0x40]
 		push ebx
 //call LoadLibraryA , result-->eax
-		mov  eax, dword ptr [LoadLibraryA]
+//addr 0x76D7DC55
+		mov  eax, /*dword ptr [LoadLibraryA]*/ 0x76D7DC55
 		call eax
 
 //push "MessageBoxA" to the stack
@@ -43,7 +44,8 @@ int main()
 //push LoadLibraryA 's result
 		push eax
 // call GetProcAddress , result --> eax
-		mov eax, dword ptr[GetProcAddress]
+// addr : 0x76D7CC84
+		mov eax, /*dword ptr[GetProcAddress]*/  0x76D7CC84
 		call eax
 
 //push "I'm hacked" to the stack
