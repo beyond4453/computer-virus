@@ -6,7 +6,9 @@ DWORD dwSizeOfCode;
 //下面是即将被注入的代码
 void code_start();              // code_start是二进制码的开始标记
 void _str_msgboxa();            // _str_msgboxa标记存放字符串的地址
+void _str_mymsgboxa();
 void _addr_GetModuleHandleA();	//_addr_GetModuleHandleA 标记存放API入口地址的地址
+void MyMessageBoxA();
 BOOL CompStr(LPSTR s1, LPSTR s2);
 DWORD GetIAFromImportTable(DWORD dwBase, LPCSTR lpszFuncName); // 寻找IA的函数
 
@@ -24,7 +26,7 @@ __declspec(naked) void code_start()
         push ebx
 //Local variables
         sub  esp, 0x10
-        // ebp - 0x0C ===> ImageBase
+        // ebp - 0x0C ===> ImageBase ???
 // self-locating 自定位 请阅读并理解下面3条指令的含义
         call _delta
 _delta:
@@ -42,9 +44,13 @@ _cont1:
         mov  [ebp-0x0C], eax
 // 调用GetIAFromImportTable();
         lea  ecx, [ebx + _str_msgboxa]
+// push "MeassageBoxA"
         push ecx
+// push ImageBase
         push [ebp-0x0C]
+//调用GetIAFromImportTable
         call offset GetIAFromImportTable
+//???????????
         add  esp, 0x8
         cmp  eax, 0x0
         jne  _ret
@@ -79,6 +85,27 @@ __declspec(naked) void _str_msgboxa()
 }
 
 
+// _str_msgboxa是字符串”MyMessageBoxA”的地址
+__declspec(naked) void _str_mymsgboxa()
+{
+    __asm {
+		_emit 'M'
+		_emit 'y'
+        _emit 'M'
+        _emit 'e'
+        _emit 's'
+        _emit 's'
+        _emit 'a'
+        _emit 'g'
+        _emit 'e'
+        _emit 'B'
+        _emit 'o'
+        _emit 'x'
+        _emit 'A'
+        _emit 0x0
+    }
+}
+
 // _addr_GetModuleHandleA是存放GetModuleHandleA()的全局变量
 __declspec(naked) void _addr_GetModuleHandleA()
 {
@@ -89,6 +116,52 @@ __declspec(naked) void _addr_GetModuleHandleA()
         _emit 0xEE
     }
 }
+
+//MyMessageBoxA()
+__declspec(naked) void MyMessageBoxA()
+{
+    __asm {
+        push ebp
+        mov  ebp, esp
+        push ebx
+        
+        call _delta2
+_delta2:
+        pop ebx
+        sub ebx, offset _delta2
+        
+        push [ebp + 0x14]
+        push [ebp + 0x10]
+        lea  ecx, [ebx + _str_hacked]
+        push ecx
+        push [ebp + 0x08]
+        lea  eax, [ebx + _addr_MessageBoxA]   //need relocation
+        call dword ptr [eax]
+        pop  ebx
+        mov  esp, ebp
+        pop  ebp
+        ret  16
+_str_hacked:
+        _emit 'I'
+        _emit '\''
+        _emit 'm'
+        _emit ' '
+        _emit 'h'
+        _emit 'a'
+        _emit 'c'
+        _emit 'k'
+        _emit 'e'
+        _emit 'd'
+        _emit '!'
+        _emit 0x0
+_addr_MessageBoxA:
+        _emit 0x11
+        _emit 0xEA
+        _emit 0x1F
+        _emit 0x76
+   }
+}
+
 // 这里请填入GetIAFromImportTable()函数的相关代码
 
 BOOL CompStr(LPSTR s1, LPSTR s2)
@@ -129,7 +202,7 @@ DWORD GetIAFromImportTable(DWORD dwBase, LPCSTR lpszFuncName)
         if (pthunk->u1.Ordinal & 0x80000000) continue;
         pOrdinalName = (PIMAGE_IMPORT_BY_NAME) (dwBase + pthunk->u1.AddressOfData);
         if (CompStr((LPSTR)lpszFuncName, (LPSTR)&pOrdinalName->Name)) 
-            return (DWORD)pthunk2;
+            return (DWORD)pthunk2->u1.Function;
     }
     return 0;
 
@@ -263,7 +336,8 @@ int inject_code(DWORD pid)
     WaitForSingleObject(hThread, INFINITE);
     GetExitCodeThread(hThread, (PDWORD) &exitcode);
     printf("exited with 0x%08X\n", exitcode);
-	printf("MessageBoxA: 0x%08X-->0x%08X", exitcode, *(int *)exitcode);
+
+//	printf("MessageBoxA: 0x%08X-->0x%08X", exitcode, *(int *)exitcode);
     VirtualFreeEx(hProcess, pCodeRemote, 0, MEM_RELEASE);
     CloseHandle(hProcess);
     return exitcode;
@@ -284,6 +358,6 @@ int main(int argc, char *argv[])
     make_code();
     r = inject_code(pid);
 
-	printf("MessageBoxA: 0x%08X-->0x%08X", r, *(int *)r);
+	printf("MessageBoxA: 0x%08X", r);
     return 0;
 }
